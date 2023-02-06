@@ -19,7 +19,8 @@ const addAns = async (ctx) => {
         downVote: [],
         date: new Date()
     })
-    ctx.body = 'Thank you for your answer.';
+    ctx.status = 201;
+    ctx.body = { msg: 'Thank you for your answer.' };
     return;
 }
 
@@ -27,14 +28,14 @@ const upVote = async (ctx) => {
     const { id } = ctx.request.params;
     const user_id = ctx.user._id.toString();
     await makeUpVote('ans', id, user_id)
-    ctx.body = 'upVote';
+    ctx.body = { msg: 'upVote' };
 }
 
 const downVote = async (ctx) => {
     const { id } = ctx.request.params;
     const user_id = ctx.user._id.toString();
     await makeDownVote('ans', id, user_id)
-    ctx.body = 'downVote'
+    ctx.body = { msg: 'downVote' }
 }
 
 module.exports = {

@@ -12,16 +12,19 @@ const canAns = async (ctx, next) => {
     const qns = await Qns.findOne({ _id: ObjectId(question_id) })
 
     if (!qns) {
-        ctx.body = 'This question is not exit.';
+        ctx.status = 400;
+        ctx.body = { msg: 'This question is not exit.' };
         return;
     }
     if (org_id !== qns.org_id.toString()) {
-        ctx.body = 'you can not answer it';
+        ctx.status = 400;
+        ctx.body = { msg: 'you can not answer it' };
         return;
     }
     const count = await Ans.countDocuments({ question_id, user_id })
     if (count > 0) {
-        ctx.body = 'you alredy answer it.';
+        ctx.status = 400;
+        ctx.body = { msg: 'you alredy answer it.' };
         return;
     }
     await next()
@@ -32,14 +35,15 @@ const inOrg = async (ctx, next) => {
     const coll = ctx.request.URL.pathname.split('/')[1];
     const ans = await client.db('test').collection(coll).findOne({ _id: ObjectId(id) }, { projection: { org_id: 1 } });
     if (!ans) {
-        ctx.body = 'answer is not exist.';
+        ctx.status = 400;
+        ctx.body = { msg: 'answer is not exist.' }
         return;
     }
     const userOrg = ctx.user.org_id.toString();
     console.log(userOrg);
     if (ans.org_id.toString() !== userOrg) {
         ctx.status = 400;
-        ctx.body = 'you can not vote other org answer';
+        ctx.body = { msg: 'you can not vote other org answer' };
         return;
     }
     await next()
@@ -52,7 +56,8 @@ const checkVote = async (ctx, next) => {
     const inUpVote = await client.db('test').collection(coll).countDocuments({ _id: ObjectId(id), upVote: { $in: [user_id] } })
     const indownVote = await client.db('test').collection(coll).countDocuments({ _id: ObjectId(id), downVote: { $in: [user_id] } })
     if (inUpVote > 0 || indownVote > 0) {
-        ctx.body = `your already voted this ${coll == 'ans' ? 'answer' : 'question'}.`;
+        ctx.status = 400;
+        ctx.body = { msg: `your already voted this ${coll == 'ans' ? 'answer' : 'question'}.` }
         return;
     }
     await next()

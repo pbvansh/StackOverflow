@@ -6,16 +6,6 @@ const User = client.db('test').collection('users')
 
 const signupUser = async (ctx) => {
     try {
-        const emailCount = await User.countDocuments({ email: ctx.request.body.email })
-        const userNameCount = await User.countDocuments({ userName: ctx.request.body.userName })
-        if (emailCount > 0) {
-            ctx.body = { msg: "Email is alreay exist." }
-            return;
-        }
-        if (userNameCount > 0) {
-            ctx.body = { msg: "user Name is alreay exist." }
-            return;
-        }
         ctx.request.body.password = await BcyptPassword(ctx.request.body.password)
         ctx.request.body.date = new Date();
         ctx.request.body.mDate = new Date();
@@ -53,6 +43,7 @@ const loginUser = async (ctx) => {
             }
             return;
         } else {
+            ctx.status = 400;
             ctx.body = { msg: 'invalid email or password' }
             return;
         }
@@ -69,10 +60,11 @@ const changePassword = async (ctx) => {
         const user = await User.findOne({ email });
         if (user && await Bcypt.compare(oldPassword, user.password)) {
             await User.updateOne({ email }, { $set: { password: await BcyptPassword(newPassword) } });
-            ctx.body = 'Password change successfully.'
+            ctx.body = { msg: 'Password change successfully.' }
             return;
         }
-        ctx.body = 'Old password is not valid. Please enter valid old password'
+        ctx.status = 400;
+        ctx.body = { msg: 'Old password is not valid. Please enter valid old password' }
         return;
 
     } catch (error) {
@@ -82,13 +74,8 @@ const changePassword = async (ctx) => {
 }
 
 const forgotePasswordLink = async (ctx) => {
-    const { email } = ctx.request.body;
-    const user = await User.findOne({ email });
-    if (!user) {
-        ctx.body = 'email is not exist';
-        return;
-    }
-    const url = ctx.host + '/user/forgotepwd/' + createJWT({ email, mDate: user.mDate });
+    const { email, mDate } = ctx.request.body;
+    const url = ctx.host + '/user/forgotepassword/' + createJWT({ email, mDate });
     ctx.body = {
         email,
         link: url
@@ -100,18 +87,21 @@ const forgotePassword = async (ctx) => {
     const { email, mDate } = verifyJWT(token);
     const user = await User.findOne({ email });
     if (user.mDate.getTime() !== new Date(mDate).getTime()) {
-        ctx.body = "This link is no longer available.";
+        ctx.status = 400;
+        ctx.body = { msg: "This link is no longer available." };
         return;
     }
     const { modifiedCount } = await User.updateOne({ email }, { $set: { password: await BcyptPassword(ctx.request.body.newPassword), mDate: new Date() } });
-    if (modifiedCount > 0) ctx.body = 'password change successfully';
-    else ctx.body = 'user is not exist';
+    if (modifiedCount > 0) ctx.body = { msg: 'password change successfully' };
+    else {
+        ctx.status = 400;
+        ctx.body = { msg: 'user is not exist' };
+    }
     return;
 }
 
 const inviteTeamMember = async (ctx) => {
     const url = ctx.host + '/user/signup?from=';
-    console.log(ctx.request.body);
     ctx.body = {
         msg: 'invitation send successfully',
         link: url + createJWT(ctx.request.body)
@@ -119,28 +109,21 @@ const inviteTeamMember = async (ctx) => {
     return;
 }
 const getTeam = async (ctx) => {
-    const users = await User.find({ org_id: ctx.user.org_id }, { projection: { password: 0 } }).toArray();
+    const users = await User.find({ org_id: ctx.user.org_id, _id: { $ne: ctx.user.org_id } }, { projection: { password: 0 } }).toArray();
     ctx.body = users;
     return;
 }
 
 const updatedUser = async (ctx) => {
     const { id } = ctx.request.params;
-    const { upData } = ctx;
-    const userNameCount = await User.countDocuments({ _id: { $ne: ObjectId(id) }, userName: upData.userName })
-
-    if (userNameCount > 0) {
-        ctx.body = { msg: "user Name is alreay exist." }
-        return;
-    }
     await User.updateOne({ _id: ObjectId(id) }, { $set: upData });
-    ctx.body = 'user updated successfully.'
+    ctx.body = { msg: 'user updated successfully.' }
 }
 
 const deleteUser = async (ctx) => {
     const { id } = ctx.request.params;
     await User.deleteOne({ _id: ObjectId(id) });
-    ctx.body = 'user deleted successfully.';
+    ctx.body = { msg: 'user deleted successfully.' };
 }
 
 module.exports = {

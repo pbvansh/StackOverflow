@@ -20,7 +20,8 @@ const askQns = async (ctx) => {
         downVote: [],
         date: new Date()
     });
-    ctx.body = 'Question ask successfully';
+    ctx.status = 201;
+    ctx.body = { msg: 'Question ask successfully' };
 }
 
 const getQns = async (ctx) => {
@@ -73,8 +74,8 @@ const getQns = async (ctx) => {
         }
     }, {
         $unwind: {
-            path : "$users",
-            preserveNullAndEmptyArrays : true
+            path: "$users",
+            preserveNullAndEmptyArrays: true
         }
     }, {
         $sort: { "answers.totalUpVote": -1 }
@@ -121,14 +122,14 @@ const updateQns = async (ctx) => {
     const { title, desc, tags } = ctx.request.body;
     const { id } = ctx.request.params;
     await Qns.updateOne({ _id: ObjectId(id) }, { $set: { user_id, org_id, title, desc, tags } });
-    ctx.body = 'question updated successfully.';
+    ctx.body = { msg: 'question updated successfully.' };
     return;
 }
 
 const deleteQns = async (ctx) => {
     const { id } = ctx.request.params;
     await Qns.deleteOne({ _id: ObjectId(id) });
-    ctx.body = 'question is delete successfully';
+    ctx.body = { msg: 'question is delete successfully' };
     return;
 }
 
@@ -136,14 +137,14 @@ const upVote = async (ctx) => {
     const { id } = ctx.request.params;
     const user_id = ctx.user._id.toString();
     await makeUpVote('qns', id, user_id)
-    ctx.body = 'upVote';
+    ctx.body = { msg: 'upVote' };
 }
 
 const downVote = async (ctx) => {
     const { id } = ctx.request.params;
     const user_id = ctx.user._id.toString();
     await makeDownVote('qns', id, user_id)
-    ctx.body = 'downVote'
+    ctx.body = { msg: 'downVote' }
 }
 
 module.exports = {

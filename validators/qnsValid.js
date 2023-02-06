@@ -3,15 +3,18 @@
 const isTitle = async (ctx, next) => {
     const { title } = ctx.request.body;
     if (!title) {
-        ctx.body = 'title is required';
+        ctx.status = 400;
+        ctx.body = { msg: 'title is required' };
         return;
     }
     if (title.length < 5) {
-        ctx.body = 'title is must more than 5 char';
+        ctx.status = 400;
+        ctx.body = { msg: 'title is must more than 5 char' };
         return;
     }
     if (title.length > 100) {
-        ctx.body = 'title is must less than 100 char';
+        ctx.status = 400;
+        ctx.body = { msg: 'title is must less than 100 char' };
         return;
     }
     await next()
@@ -20,11 +23,13 @@ const isTitle = async (ctx, next) => {
 const isdesc = async (ctx, next) => {
     const { desc } = ctx.request.body;
     if (!desc) {
-        ctx.body = 'description is required';
+        ctx.status = 400;
+        ctx.body = { msg: 'description is required' };
         return;
     }
     if (desc.length > 5000) {
-        ctx.body = 'description is must less than 5000 char';
+        ctx.status = 400;
+        ctx.body = { msg: 'description is must less than 5000 char' };
         return;
     }
     await next()
@@ -33,6 +38,7 @@ const isdesc = async (ctx, next) => {
 const setOrg = async (ctx, next) => {
     const { role } = ctx.user;
     if (role == 'owner') {
+        ctx.status = 400;
         ctx.user.org_id = ctx.user._id;
     }
     await next()
@@ -43,7 +49,8 @@ const isTags = async (ctx, next) => {
     const reg = /^[^ !@#$%^&*(),.?":{}|<>]{2,20}$/;
     tags.length > 0 ? tags.forEach(tag => {
         if (!reg.test(tag)) {
-            ctx.body = 'Please provide valid tags.';
+            ctx.status = 400;
+            ctx.body = { msg: 'Please provide valid tags.' };
             return;
         }
     }) : null;
@@ -54,7 +61,8 @@ const filter = async (ctx, next) => {
     const { sortBy, filterBy, dateBy, page = 1, limit = 10 } = ctx.request.query;
     let noOfDoc = Number(limit);
     if (noOfDoc < 1) {
-        ctx.body = 'The limit must be positive or > 0';
+        ctx.status = 400;
+        ctx.body = {msg :'The limit must be positive or > 0'};
         return;
     }
     let skip = ((Number(limit) * Number(page)) - Number(limit));

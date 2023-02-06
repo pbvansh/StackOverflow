@@ -10,7 +10,7 @@ const protect = async (ctx, next) => {
         const token = ctx.headers.authorization.split(' ')[1];
         if (!token) {
             ctx.status = 401;
-            ctx.body = 'Access denied. Not Authenticated...';
+            ctx.body = { msg: 'Access denied. Not Authenticated...' }
             return;
         }
         try {
@@ -18,11 +18,12 @@ const protect = async (ctx, next) => {
             const { email, mDate } = JWT.verify(token, secret)
             const user = await User.findOne({ email }, { projection: { password: 0 } })
             if (!user) {
-                ctx.body = 'User is not valid';
+                ctx.body = { msg: 'User is not valid' };
                 return;
             }
             if (user.mDate.getTime() !== new Date(mDate).getTime()) {
-                ctx.body = "please log in to your account for security purposes.";
+                ctx.status = 401;
+                ctx.body = { msg: "please log in to your account for security purposes." };
                 return;
             }
             ctx.user = user;
@@ -30,12 +31,12 @@ const protect = async (ctx, next) => {
         } catch (err) {
             console.log(err);
             ctx.status = 401;
-            ctx.body = 'Access denied. Invalid auth token...';
+            ctx.body = { msg: 'Access denied. Invalid auth token...' };
             return;
         }
     } else {
         ctx.status = 401;
-        ctx.body = 'Not Authorze';
+        ctx.body = { msg: 'Not Authorze' };
         return;
     }
 }
@@ -46,7 +47,8 @@ const isAdmin = async (ctx, next) => {
         if (ctx.user.role === 'admin') {
             await next();
         } else {
-            ctx.body = 'Access denied. only admin can do it.'
+            ctx.status = 400;
+            ctx.body = { msg: 'Access denied. only admin can do it.' }
             return;
         }
     })
@@ -57,7 +59,8 @@ const isOwner = async (ctx, next) => {
         if (ctx.user.role === 'owner') {
             await next();
         } else {
-            ctx.body = 'Access denied. only owner can do it.';
+            ctx.status = 400;
+            ctx.body = { msg: 'Access denied. only owner can do it.' };
             return;
         }
     })
@@ -69,7 +72,8 @@ const isAdminOrOwner = async (ctx, next) => {
         if (ctx.user.role === 'admin' || ctx.user.role === 'owner') {
             await next();
         } else {
-            ctx.body = 'Access denied. only owner or admin can do it.';
+            ctx.status = 400;
+            ctx.body = { msg: 'Access denied. only owner or admin can do it.' };
             return;
         }
     })
@@ -92,13 +96,13 @@ const havePermision = async (ctx, next) => {
             console.log(reqOrg_id)
             const role = ctx.user.role;
             console.log(role)
-            const { org_id } = await User.findOne({ _id: ObjectId(id) }, { projection: { org_id: 1 } });
-            console.log(org_id.toString())
-            if ((role === 'admin' || role === 'owner') && org_id.toString() === reqOrg_id) {
+            const user = await User.findOne({ _id: ObjectId(id) }, { projection: { org_id: 1 } });
+            if ((role === 'admin' || role === 'owner') && user?.org_id.toString() === reqOrg_id) {
                 console.log('OA')
                 await next();
             } else {
-                ctx.body = 'you have no permision.';
+                ctx.status = 400;
+                ctx.body = { msg: 'you have no permision.' };
                 return;
             }
         }
