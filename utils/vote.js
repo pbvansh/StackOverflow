@@ -7,6 +7,7 @@ const makeUpVote = async (coll, id, user_id) => {
     await collection.updateOne({ _id: ObjectId(id) }, { $inc: { totalUpVote: 1 } })
     return;
 }
+
 const makeDownVote = async (coll, id, user_id) => {
     const collection = client.db('test').collection(coll)
     await collection.updateOne({ _id: ObjectId(id) }, { $push: { downVote: user_id } })

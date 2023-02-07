@@ -1,20 +1,17 @@
 
 const { ObjectId } = require('mongodb');
 const { client } = require('../database/db');
+const { sendMsg } = require('../utils/msg');
 const { makeDownVote, makeUpVote } = require('../utils/vote');
 const Qns = client.db('test').collection('qns')
 
 const askQns = async (ctx) => {
-    const user_id = ctx.user._id;
-    const { org_id } = ctx.user;
-    const { title, desc, tags } = ctx.request.body;
+    const { _id: user_id, org_id } = ctx.user._id;
     const date = new Date();
     await Qns.insertOne({
         user_id,
         org_id,
-        title,
-        desc,
-        tags,
+        ...ctx.request.body,
         totalUpVote: 0,
         totalDownVote: 0,
         upVote: [],
@@ -23,8 +20,7 @@ const askQns = async (ctx) => {
         mDate: date
 
     });
-    ctx.status = 201;
-    ctx.body = { msg: 'Question ask successfully' };
+    sendMsg(ctx, 201, 'Question ask successfully');
 }
 
 const getSingleQns = async (ctx) => {
@@ -105,8 +101,7 @@ const getSingleQns = async (ctx) => {
 
 const getQns = async (ctx) => {
     const { org_id } = ctx.user;
-    const { sortBy, filterBy, dateBy, skip, limit } = ctx;
-    // console.log(sortBy, filterBy, dateBy);
+    const { sort, filter, date, skip, noOfDoc } = ctx.allFilters;
     const qns = await Qns.aggregate([{
         $match: {
             $and: [
@@ -159,7 +154,6 @@ const getQns = async (ctx) => {
             upVotes: { "$first": "$totalUpVote" },
             downVotes: { "$first": "$totalDownVote" },
             date: { "$first": "$date" },
-            // mostAns: { $sum: 1 },
             totalAnswers: {
                 $sum: {
                     "$cond": [
@@ -172,14 +166,14 @@ const getQns = async (ctx) => {
         }
     },
     {
-        $match: { ...filterBy, ...dateBy } || {}
+        $match: { ...filter, ...date } || {}
     },
     {
-        $sort: Object.keys(sortBy).length === 0 ? { upVotes: -1 } : sortBy
+        $sort: Object.keys(sort).length === 0 ? { upVotes: -1 } : sort
     }, {
         $skip: skip
     }, {
-        $limit: limit
+        $limit: noOfDoc
     }
     ]).toArray()
     ctx.body = qns;
@@ -187,8 +181,7 @@ const getQns = async (ctx) => {
 }
 
 const updateQns = async (ctx) => {
-    const user_id = ctx.user._id;
-    const { org_id } = ctx.user;
+    const { org_id, _id: user_id } = ctx.user;
     const { title, desc, tags } = ctx.request.body;
     const { id } = ctx.request.params;
     await Qns.updateOne({ _id: ObjectId(id) }, { $set: { user_id, org_id, title, desc, tags, mDate: new Date() } });

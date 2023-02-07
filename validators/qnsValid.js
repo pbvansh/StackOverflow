@@ -1,21 +1,16 @@
+const { sendMsg } = require("../utils/msg");
 
 
 const isTitle = async (ctx, next) => {
     const { title } = ctx.request.body;
     if (!title) {
-        ctx.status = 400;
-        ctx.body = { msg: 'title is required' };
-        return;
+        sendMsg(ctx, 400, 'title is required')
     }
     if (title.length < 5) {
-        ctx.status = 400;
-        ctx.body = { msg: 'title is must more than 5 char' };
-        return;
+        sendMsg(ctx, 400, 'title is must more than 5 char')
     }
     if (title.length > 100) {
-        ctx.status = 400;
-        ctx.body = { msg: 'title is must less than 100 char' };
-        return;
+        sendMsg(ctx, 400, 'title is must less than 100 char')
     }
     await next()
 }
@@ -23,14 +18,10 @@ const isTitle = async (ctx, next) => {
 const isdesc = async (ctx, next) => {
     const { desc } = ctx.request.body;
     if (!desc) {
-        ctx.status = 400;
-        ctx.body = { msg: 'description is required' };
-        return;
+        sendMsg(ctx, 400, 'description is required')
     }
     if (desc.length > 5000) {
-        ctx.status = 400;
-        ctx.body = { msg: 'description is must less than 5000 char' };
-        return;
+        sendMsg(ctx, 400, 'description is must less than 5000 char')
     }
     await next()
 }
@@ -49,9 +40,7 @@ const isTags = async (ctx, next) => {
     const reg = /^[^ !@#$%^&*(),.?":{}|<>]{2,20}$/;
     tags.length > 0 ? tags.forEach(tag => {
         if (!reg.test(tag)) {
-            ctx.status = 400;
-            ctx.body = { msg: 'Please provide valid tags.' };
-            return;
+            sendMsg(ctx, 400, 'Please provide valid tags.')
         }
     }) : null;
     await next()
@@ -61,9 +50,7 @@ const filter = async (ctx, next) => {
     const { sortBy, filterBy, dateBy, page = 1, limit = 10 } = ctx.request.query;
     let noOfDoc = Number(limit);
     if (noOfDoc < 1) {
-        ctx.status = 400;
-        ctx.body = {msg :'The limit must be positive or > 0'};
-        return;
+        sendMsg(ctx, 400, 'The limit must be positive or > 0')
     }
     let skip = ((Number(limit) * Number(page)) - Number(limit));
     skip < 0 ? skip = 0 : null;
@@ -116,11 +103,12 @@ const filter = async (ctx, next) => {
 
         }
     }
-    ctx.sortBy = sort;
-    ctx.filterBy = filter;
-    ctx.dateBy = date;
-    ctx.skip = skip;
-    ctx.limit = noOfDoc;
+    ctx.allFilters = { sort, filter, date, skip, noOfDoc };
+    // ctx.sortBy = sort;
+    // ctx.filterBy = filter;
+    // ctx.dateBy = date;
+    // ctx.skip = skip;
+    // ctx.limit = noOfDoc;
     await next()
 }
 

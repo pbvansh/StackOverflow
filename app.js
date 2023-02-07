@@ -16,10 +16,7 @@ app.use(userRoute.routes()).use(userRoute.allowedMethods());
 app.use(qnsRoute.routes()).use(qnsRoute.allowedMethods());
 app.use(ansRoute.routes()).use(ansRoute.allowedMethods());
 app.use(tagsRoute.routes()).use(tagsRoute.allowedMethods());
-
-app.listen(port, async () => {
-    await connectDB();
+connectDB();
+app.listen(port,  () => {  
     console.log(`server is run on : ${port}`);
 })
-
-

@@ -1,24 +1,24 @@
 const Bcypt = require('bcryptjs')
 const { ObjectId } = require('mongodb')
 const { client } = require('../database/db')
+const { sendMsg } = require('../utils/msg')
 const { BcyptPassword, createJWT } = require('../utils/jwt')
 const User = client.db('test').collection('users')
 const Invite = client.db('test').collection('invitation')
 
 const signupUser = async (ctx) => {
     try {
-        ctx.request.body.password = await BcyptPassword(ctx.request.body.password)
-        ctx.request.body.date = new Date();
-        ctx.request.body.mDate = new Date();
         const id = new ObjectId();
-        ctx.request.body._id = id
-        ctx.request.body.org_id ? null : ctx.request.body.org_id = id;
-
+        ctx.request.body = {
+            ...ctx.request.body,
+            _id: id,
+            password: await BcyptPassword(ctx.request.body.password),
+            date: new Date(),
+            mDate: new Date(),
+            org_id :ctx.request.body.org_id || id
+        }
         await User.insertOne(ctx.request.body)
-        ctx.status = 201;
-        ctx.body = { msg: "signup successfully" }
-        return;
-
+        sendMsg(ctx, 201, "signup successfully")
     } catch (error) {
         console.log(error);
         ctx.body = { msg: error }
@@ -44,9 +44,7 @@ const loginUser = async (ctx) => {
             }
             return;
         } else {
-            ctx.status = 400;
-            ctx.body = { msg: 'invalid email or password' }
-            return;
+            sendMsg(ctx, 400, 'invalid email or password');
         }
     } catch (error) {
         console.log(error);
@@ -61,13 +59,9 @@ const changePassword = async (ctx) => {
         const user = await User.findOne({ email });
         if (user && await Bcypt.compare(oldPassword, user.password)) {
             await User.updateOne({ email }, { $set: { password: await BcyptPassword(newPassword) } });
-            ctx.body = { msg: 'Password change successfully.' }
-            return;
+            sendMsg(ctx, 200, 'Password change successfully.');
         }
-        ctx.status = 400;
-        ctx.body = { msg: 'Old password is not valid. Please enter valid old password' }
-        return;
-
+        sendMsg(ctx, 400, 'Old password is not valid. Please enter valid old password');
     } catch (error) {
         console.log(error);
     }
@@ -88,15 +82,13 @@ const forgotePassword = async (ctx) => {
     const { modifiedCount } = await User.updateOne({ email: verifyToken.email }, { $set: { password: await BcyptPassword(ctx.request.body.newPassword), mDate: new Date() } });
     if (modifiedCount > 0) ctx.body = { msg: 'password change successfully' };
     else {
-        ctx.status = 400;
-        ctx.body = { msg: 'user is not exist' };
+        sendMsg(ctx, 400, 'user is not exist');
     }
     return;
 }
 
 const inviteTeamMember = async (ctx) => {
     const invitationId = await Invite.insertOne(ctx.request.body)
-    console.log(invitationId)
     const url = ctx.host + '/user/signup?from=';
     ctx.body = {
         msg: 'invitation send successfully',

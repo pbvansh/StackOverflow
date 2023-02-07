@@ -1,6 +1,7 @@
 
 const { ObjectId } = require('mongodb');
 const { client } = require('../database/db');
+const { sendMsg } = require('../utils/msg');
 const { makeUpVote, makeDownVote } = require('../utils/vote');
 const Ans = client.db('test').collection('ans')
 
@@ -19,9 +20,7 @@ const addAns = async (ctx) => {
         downVote: [],
         date: new Date()
     })
-    ctx.status = 201;
-    ctx.body = { msg: 'Thank you for your answer.' };
-    return;
+    sendMsg(ctx,201,'Thank you for your answer.');
 }
 
 const upVote = async (ctx) => {
