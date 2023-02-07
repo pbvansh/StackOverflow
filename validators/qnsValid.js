@@ -116,7 +116,6 @@ const filter = async (ctx, next) => {
 
         }
     }
-    console.log(filter)
     ctx.sortBy = sort;
     ctx.filterBy = filter;
     ctx.dateBy = date;

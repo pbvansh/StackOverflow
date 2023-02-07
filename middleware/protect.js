@@ -1,7 +1,7 @@
 const JWT = require('jsonwebtoken');
 const { ObjectId } = require('mongodb');
 const { client } = require('../database/db');
-const { verifyJWT } = require('../validators/userValid');
+const { verifyJWT } = require('../utils/jwt');
 const User = client.db('test').collection('users')
 require('dotenv').config()
 
@@ -18,7 +18,8 @@ const protect = async (ctx, next) => {
             const { email, mDate } = JWT.verify(token, secret)
             const user = await User.findOne({ email })
             if (!user) {
-                ctx.body = { msg: 'User is not valid' };
+                ctx.status = 401;
+                ctx.body = { msg: 'Unauthorized user.' };
                 return;
             }
             if (user.mDate.getTime() !== new Date(mDate).getTime()) {

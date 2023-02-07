@@ -1,8 +1,9 @@
-const Bcypt = require('bcryptjs')
-const JWT = require('jsonwebtoken');
+
 const { ObjectId } = require('mongodb');
-const { client } = require('../database/db')
+const { client } = require('../database/db');
+const { verifyJWT, decodeJWT } = require('../utils/jwt');
 const User = client.db('test').collection('users')
+const Invite = client.db('test').collection('invitation')
 require('dotenv').config()
 
 const isAllFields = async (ctx, next) => {
@@ -153,16 +154,23 @@ const isRole = async (ctx, next) => {
 const setRoleOrEmail = async (ctx, next) => {
     const { from } = ctx.request.query;
     if (from) {
-        const { role, email, org_id } = verifyJWT(from);
-        const isOrgExsist = await User.countDocuments({ _id: ObjectId(org_id) })
+        const { invitationId } = verifyJWT(from);
+        const user = await Invite.findOne({ _id: ObjectId(invitationId) })
+        console.log(user)
+        if (!user) {
+            ctx.status = 400;
+            ctx.body = { msg: 'this invitation link is not valid.' };
+            return;
+        }
+        const isOrgExsist = await User.countDocuments({ _id: ObjectId(user.org_id) })
         if (isOrgExsist !== 1) {
             ctx.status = 400;
             ctx.body = { msg: 'this orgenazation is not exsist.' };
             return;
         }
-        ctx.request.body.role = role;
-        ctx.request.body.org_id = ObjectId(org_id);
-        ctx.request.body.email = email;
+        ctx.request.body.role = user.role;
+        ctx.request.body.org_id = ObjectId(user.org_id);
+        ctx.request.body.email = user.email;
     } else {
         ctx.request.body.role = 'owner';
     }
@@ -194,7 +202,7 @@ const isValidLink = async (ctx, next) => {
         const decodedToken = decodeJWT(token)
         const user = await User.findOne({ email: decodedToken.email });
         const verifyToken = verifyJWT(token, user.password);
-        if (verifyToken == null) {
+        if (!verifyToken) {
             ctx.status = 400;
             ctx.body = { msg: "This link is no longer available." };
             return;
@@ -209,35 +217,6 @@ const isValidLink = async (ctx, next) => {
 
 }
 
-const createJWT = (data, sec) => {
-    const secret = sec || process.env.JWT_SECRET;
-    try {
-        return JWT.sign(data, secret, {
-            expiresIn: '7d'
-        })
-    } catch (error) {
-        console.log(error);
-    }
-}
-
-const verifyJWT = (token, sec) => {
-    const secret = sec || process.env.JWT_SECRET;
-    try {
-        return JWT.verify(token, secret);
-    } catch (error) {
-        return null;
-    }
-}
-
-const BcyptPassword = async (password) => {
-    const salt = await Bcypt.genSalt(10);
-    return (await Bcypt.hash(password, salt))
-}
-
-const decodeJWT = (token) => {
-    return JWT.decode(token)
-}
-
 module.exports = {
     isAllFields,
     isEmail,
@@ -249,10 +228,6 @@ module.exports = {
     isLogo,
     isRole,
     setRoleOrEmail,
-    createJWT,
-    verifyJWT,
-    BcyptPassword,
-    isValidData,
-    decodeJWT,
-    isValidLink
+    isValidLink,
+    isValidData
 }

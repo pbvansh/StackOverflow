@@ -6,11 +6,12 @@ const qnsRoute = require('./routes/qnsRoutes')
 const ansRoute = require('./routes/ansRoutes')
 const tagsRoute = require('./routes/tagRoutes')
 require('dotenv').config()
+
 const port = process.env.PORT;
 
 const app = new koa();
-app.use(bodyParser())
 
+app.use(bodyParser())
 app.use(userRoute.routes()).use(userRoute.allowedMethods());
 app.use(qnsRoute.routes()).use(qnsRoute.allowedMethods());
 app.use(ansRoute.routes()).use(ansRoute.allowedMethods());
@@ -21,6 +22,4 @@ app.listen(port, async () => {
     console.log(`server is run on : ${port}`);
 })
 
-
-app.use(bodyParser())
 

@@ -1,8 +1,9 @@
 const Bcypt = require('bcryptjs')
 const { ObjectId } = require('mongodb')
 const { client } = require('../database/db')
-const { createJWT, verifyJWT, BcyptPassword, decodeJWT } = require('../validators/userValid')
+const { BcyptPassword, createJWT } = require('../utils/jwt')
 const User = client.db('test').collection('users')
+const Invite = client.db('test').collection('invitation')
 
 const signupUser = async (ctx) => {
     try {
@@ -94,13 +95,16 @@ const forgotePassword = async (ctx) => {
 }
 
 const inviteTeamMember = async (ctx) => {
+    const invitationId = await Invite.insertOne(ctx.request.body)
+    console.log(invitationId)
     const url = ctx.host + '/user/signup?from=';
     ctx.body = {
         msg: 'invitation send successfully',
-        link: url + createJWT(ctx.request.body)
+        link: url + createJWT({ invitationId: invitationId.insertedId })
     }
     return;
 }
+
 const getTeam = async (ctx) => {
     const users = await User.find({ org_id: ctx.user.org_id, _id: { $ne: ctx.user.org_id } }, { projection: { password: 0 } }).toArray();
     ctx.body = users;
