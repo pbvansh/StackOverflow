@@ -16,7 +16,7 @@ const protect = async (ctx, next) => {
         try {
             const secret = process.env.JWT_SECRET;
             const { email, mDate } = JWT.verify(token, secret)
-            const user = await User.findOne({ email }, { projection: { password: 0 } })
+            const user = await User.findOne({ email })
             if (!user) {
                 ctx.body = { msg: 'User is not valid' };
                 return;

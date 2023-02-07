@@ -21,6 +21,11 @@ const canAns = async (ctx, next) => {
         ctx.body = { msg: 'you can not answer it' };
         return;
     }
+    if (ctx.user._id.toString() === qns.user_id.toString()) {
+        ctx.status = 400;
+        ctx.body = { msg: "you can't answer own answers." };
+        return;
+    }
     const count = await Ans.countDocuments({ question_id, user_id })
     if (count > 0) {
         ctx.status = 400;

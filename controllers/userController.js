@@ -1,7 +1,7 @@
 const Bcypt = require('bcryptjs')
 const { ObjectId } = require('mongodb')
 const { client } = require('../database/db')
-const { createJWT, verifyJWT, BcyptPassword } = require('../validators/userValid')
+const { createJWT, verifyJWT, BcyptPassword, decodeJWT } = require('../validators/userValid')
 const User = client.db('test').collection('users')
 
 const signupUser = async (ctx) => {
@@ -74,8 +74,8 @@ const changePassword = async (ctx) => {
 }
 
 const forgotePasswordLink = async (ctx) => {
-    const { email, mDate } = ctx.request.body;
-    const url = ctx.host + '/user/forgotepassword/' + createJWT({ email, mDate });
+    const { email, secret } = ctx.request.body;
+    const url = ctx.host + '/user/forgotepassword/' + createJWT({ email }, secret);
     ctx.body = {
         email,
         link: url
@@ -83,15 +83,8 @@ const forgotePasswordLink = async (ctx) => {
 }
 
 const forgotePassword = async (ctx) => {
-    const { token } = ctx.request.params;
-    const { email, mDate } = verifyJWT(token);
-    const user = await User.findOne({ email });
-    if (user.mDate.getTime() !== new Date(mDate).getTime()) {
-        ctx.status = 400;
-        ctx.body = { msg: "This link is no longer available." };
-        return;
-    }
-    const { modifiedCount } = await User.updateOne({ email }, { $set: { password: await BcyptPassword(ctx.request.body.newPassword), mDate: new Date() } });
+    const { verifyToken } = ctx;
+    const { modifiedCount } = await User.updateOne({ email: verifyToken.email }, { $set: { password: await BcyptPassword(ctx.request.body.newPassword), mDate: new Date() } });
     if (modifiedCount > 0) ctx.body = { msg: 'password change successfully' };
     else {
         ctx.status = 400;

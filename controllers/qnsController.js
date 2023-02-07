@@ -8,6 +8,7 @@ const askQns = async (ctx) => {
     const user_id = ctx.user._id;
     const { org_id } = ctx.user;
     const { title, desc, tags } = ctx.request.body;
+    const date = new Date();
     await Qns.insertOne({
         user_id,
         org_id,
@@ -18,10 +19,88 @@ const askQns = async (ctx) => {
         totalDownVote: 0,
         upVote: [],
         downVote: [],
-        date: new Date()
+        date: date,
+        mDate: date
+
     });
     ctx.status = 201;
     ctx.body = { msg: 'Question ask successfully' };
+}
+
+const getSingleQns = async (ctx) => {
+    const { id } = ctx.request.params;
+    const qns = await Qns.aggregate([{
+        $match: {
+            _id: ObjectId(id)
+        }
+    }, {
+        $lookup: {
+            from: 'ans',
+            localField: '_id',
+            foreignField: 'question_id',
+            as: 'answer'
+        }
+    }, {
+        $unwind: {
+            path: "$answer",
+            preserveNullAndEmptyArrays: true
+        }
+    },
+    {
+        $lookup: {
+            from: 'users',
+            localField: 'user_id',
+            foreignField: '_id',
+            as: 'userName'
+        }
+    },
+    {
+        $unwind: {
+            path: "$userName",
+            preserveNullAndEmptyArrays: true
+        }
+    },
+    {
+        $lookup: {
+            from: 'users',
+            localField: 'answer.user_id',
+            foreignField: '_id',
+            as: 'user'
+        }
+    }, {
+        $unwind: {
+            path: "$user",
+            preserveNullAndEmptyArrays: true
+        }
+    },
+    {
+        $group: {
+            _id: "$_id",
+            title: { '$first': '$title' },
+            name: { '$first': '$userName.userName' },
+            tags: { "$first": "$tags" },
+            upVotes: { "$first": "$totalUpVote" },
+            downVotes: { "$first": "$totalDownVote" },
+            date: { "$first": "$date" },
+            totalAnswers: {
+                $push: {
+                    $cond: [
+                        { "$eq": [{ $type: "$answer" }, 'missing'] },
+                        "$noval",
+                        {
+                            answer: "$answer.ans",
+                            userName: "$user.userName",
+                            totalUpVote: "$answer.totalUpVote",
+                            totalDownVote: "$answer.totalDownVote",
+                            date: "$answer.date"
+                        }
+                    ]
+                }
+            }
+        }
+    }
+    ]).toArray();
+    ctx.body = qns;
 }
 
 const getQns = async (ctx) => {
@@ -50,7 +129,10 @@ const getQns = async (ctx) => {
         }
     },
     {
-        $unwind: "$userName"
+        $unwind: {
+            path: "$userName",
+            preserveNullAndEmptyArrays: true
+        }
     },
     {
         $lookup: {
@@ -66,18 +148,6 @@ const getQns = async (ctx) => {
         }
     },
     {
-        $lookup: {
-            from: 'users',
-            localField: 'answers.user_id',
-            foreignField: '_id',
-            as: 'users'
-        }
-    }, {
-        $unwind: {
-            path: "$users",
-            preserveNullAndEmptyArrays: true
-        }
-    }, {
         $sort: { "answers.totalUpVote": -1 }
     },
     {
@@ -89,14 +159,14 @@ const getQns = async (ctx) => {
             upVotes: { "$first": "$totalUpVote" },
             downVotes: { "$first": "$totalDownVote" },
             date: { "$first": "$date" },
-            mostAns: { $sum: 1 },
-            answers: {
-                $push: {
-                    answer: "$answers.ans",
-                    userName: "$users.userName",
-                    totalUpVote: "$answers.totalUpVote",
-                    totalDownVote: "$answers.totalDownVote",
-                    date: "$answers.date"
+            // mostAns: { $sum: 1 },
+            totalAnswers: {
+                $sum: {
+                    "$cond": [
+                        { "$eq": [{ $type: "$answers" }, 'missing'] },
+                        0,
+                        1
+                    ]
                 }
             }
         }
@@ -105,7 +175,7 @@ const getQns = async (ctx) => {
         $match: { ...filterBy, ...dateBy } || {}
     },
     {
-        $sort: Object.keys(sortBy).length === 0 ? { _id: 1 } : sortBy
+        $sort: Object.keys(sortBy).length === 0 ? { upVotes: -1 } : sortBy
     }, {
         $skip: skip
     }, {
@@ -117,11 +187,11 @@ const getQns = async (ctx) => {
 }
 
 const updateQns = async (ctx) => {
-    const user_id = ctx.user._id.toString();
+    const user_id = ctx.user._id;
     const { org_id } = ctx.user;
     const { title, desc, tags } = ctx.request.body;
     const { id } = ctx.request.params;
-    await Qns.updateOne({ _id: ObjectId(id) }, { $set: { user_id, org_id, title, desc, tags } });
+    await Qns.updateOne({ _id: ObjectId(id) }, { $set: { user_id, org_id, title, desc, tags, mDate: new Date() } });
     ctx.body = { msg: 'question updated successfully.' };
     return;
 }
@@ -153,5 +223,6 @@ module.exports = {
     updateQns,
     deleteQns,
     upVote,
-    downVote
+    downVote,
+    getSingleQns
 }

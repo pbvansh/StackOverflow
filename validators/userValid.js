@@ -46,7 +46,7 @@ const isMailExsist = async (ctx, next) => {
         ctx.body = { msg: 'email is not exist' };
         return;
     }
-    ctx.request.body.mDate = user.mDate;
+    ctx.request.body.secret = user.password;
     await next()
 }
 
@@ -154,6 +154,12 @@ const setRoleOrEmail = async (ctx, next) => {
     const { from } = ctx.request.query;
     if (from) {
         const { role, email, org_id } = verifyJWT(from);
+        const isOrgExsist = await User.countDocuments({ _id: ObjectId(org_id) })
+        if (isOrgExsist !== 1) {
+            ctx.status = 400;
+            ctx.body = { msg: 'this orgenazation is not exsist.' };
+            return;
+        }
         ctx.request.body.role = role;
         ctx.request.body.org_id = ObjectId(org_id);
         ctx.request.body.email = email;
@@ -182,9 +188,31 @@ const isValidData = async (ctx, next) => {
     await next();
 }
 
-const createJWT = (data) => {
+const isValidLink = async (ctx, next) => {
     try {
-        return JWT.sign(data, process.env.JWT_SECRET, {
+        const { token } = ctx.request.params;
+        const decodedToken = decodeJWT(token)
+        const user = await User.findOne({ email: decodedToken.email });
+        const verifyToken = verifyJWT(token, user.password);
+        if (verifyToken == null) {
+            ctx.status = 400;
+            ctx.body = { msg: "This link is no longer available." };
+            return;
+        }
+        ctx.verifyToken = verifyToken;
+        await next()
+    } catch (e) {
+        ctx.status = 400;
+        ctx.body = { msg: 'Forgote password link is incorrect.' }
+        return;
+    }
+
+}
+
+const createJWT = (data, sec) => {
+    const secret = sec || process.env.JWT_SECRET;
+    try {
+        return JWT.sign(data, secret, {
             expiresIn: '7d'
         })
     } catch (error) {
@@ -192,11 +220,12 @@ const createJWT = (data) => {
     }
 }
 
-const verifyJWT = (token) => {
+const verifyJWT = (token, sec) => {
+    const secret = sec || process.env.JWT_SECRET;
     try {
-        return JWT.verify(token, process.env.JWT_SECRET)
+        return JWT.verify(token, secret);
     } catch (error) {
-        console.log(error);
+        return null;
     }
 }
 
@@ -205,8 +234,8 @@ const BcyptPassword = async (password) => {
     return (await Bcypt.hash(password, salt))
 }
 
-const decodeJWT = () => {
-
+const decodeJWT = (token) => {
+    return JWT.decode(token)
 }
 
 module.exports = {
@@ -223,5 +252,7 @@ module.exports = {
     createJWT,
     verifyJWT,
     BcyptPassword,
-    isValidData
+    isValidData,
+    decodeJWT,
+    isValidLink
 }
