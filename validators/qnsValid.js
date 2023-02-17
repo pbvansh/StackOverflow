@@ -1,27 +1,40 @@
+const { client } = require("../database/db");
+const Qns = client.db('test').collection('qns')
 const { sendMsg } = require("../utils/msg");
 
 
 const isTitle = async (ctx, next) => {
     const { title } = ctx.request.body;
     if (!title) {
-        sendMsg(ctx, 400, 'title is required')
+        sendMsg(ctx, 400, 'title is required');
+        return;
     }
     if (title.length < 5) {
-        sendMsg(ctx, 400, 'title is must more than 5 char')
+        sendMsg(ctx, 400, 'title is must more than 5 char');
+        return;
     }
     if (title.length > 100) {
-        sendMsg(ctx, 400, 'title is must less than 100 char')
+        sendMsg(ctx, 400, 'title is must less than 100 char');
+        return;
+    }
+    const isExist = await Qns.countDocuments({ user_id: ctx.user._id, title })
+    if (isExist > 0) {
+        sendMsg(ctx, 400, 'You already asked this question');
+        return;
     }
     await next()
 }
 
+
 const isdesc = async (ctx, next) => {
     const { desc } = ctx.request.body;
     if (!desc) {
-        sendMsg(ctx, 400, 'description is required')
+        sendMsg(ctx, 400, 'description is required');
+        return;
     }
     if (desc.length > 5000) {
         sendMsg(ctx, 400, 'description is must less than 5000 char')
+        return;
     }
     await next()
 }
@@ -29,7 +42,7 @@ const isdesc = async (ctx, next) => {
 const setOrg = async (ctx, next) => {
     const { role } = ctx.user;
     if (role == 'owner') {
-        ctx.status = 400;
+        // ctx.status = 400;
         ctx.user.org_id = ctx.user._id;
     }
     await next()
@@ -37,10 +50,14 @@ const setOrg = async (ctx, next) => {
 
 const isTags = async (ctx, next) => {
     const { tags } = ctx.request.body;
+    tags.forEach((tag, idx) => {
+        tags[idx] = tag.trim();
+    })
     const reg = /^[^ !@#$%^&*(),.?":{}|<>]{2,20}$/;
     tags.length > 0 ? tags.forEach(tag => {
         if (!reg.test(tag)) {
-            sendMsg(ctx, 400, 'Please provide valid tags.')
+            sendMsg(ctx, 400, 'Please provide valid tags.');
+            return;
         }
     }) : null;
     await next()
@@ -50,7 +67,8 @@ const filter = async (ctx, next) => {
     const { sortBy, filterBy, dateBy, page = 1, limit = 10 } = ctx.request.query;
     let noOfDoc = Number(limit);
     if (noOfDoc < 1) {
-        sendMsg(ctx, 400, 'The limit must be positive or > 0')
+        sendMsg(ctx, 400, 'The limit must be positive or > 0');
+        return;
     }
     let skip = ((Number(limit) * Number(page)) - Number(limit));
     skip < 0 ? skip = 0 : null;
@@ -112,6 +130,14 @@ const filter = async (ctx, next) => {
     await next()
 }
 
+const trimData = async (ctx, next) => {
+    const dataForTrim = ctx.request.body;
+    Object.keys(dataForTrim).forEach((key) => {
+        if (typeof dataForTrim[key] == 'string') dataForTrim[key] = dataForTrim[key].trim()
+    })
+    await next()
+}
+
 
 
 module.exports = {
@@ -119,5 +145,6 @@ module.exports = {
     isTitle,
     isdesc,
     setOrg,
-    filter
+    filter,
+    trimData
 }

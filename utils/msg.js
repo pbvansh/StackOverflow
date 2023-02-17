@@ -1,7 +1,7 @@
 
 const sendMsg = (ctx, code, msg) => {
     ctx.status = code;
-    ctx.body = { msg }
+    ctx.body = { msg };
     return;
 }
 

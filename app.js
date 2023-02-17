@@ -11,12 +11,13 @@ const port = process.env.PORT;
 
 const app = new koa();
 
+connectDB();
+
 app.use(bodyParser())
 app.use(userRoute.routes()).use(userRoute.allowedMethods());
 app.use(qnsRoute.routes()).use(qnsRoute.allowedMethods());
 app.use(ansRoute.routes()).use(ansRoute.allowedMethods());
 app.use(tagsRoute.routes()).use(tagsRoute.allowedMethods());
-connectDB();
-app.listen(port,  () => {  
+app.listen(port, () => {
     console.log(`server is run on : ${port}`);
 })

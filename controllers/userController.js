@@ -15,10 +15,11 @@ const signupUser = async (ctx) => {
             password: await BcyptPassword(ctx.request.body.password),
             date: new Date(),
             mDate: new Date(),
-            org_id :ctx.request.body.org_id || id
+            org_id: ctx.request.body.org_id || id
         }
         await User.insertOne(ctx.request.body)
-        sendMsg(ctx, 201, "signup successfully")
+        sendMsg(ctx, 201, "signup successfully");
+        return;
     } catch (error) {
         console.log(error);
         ctx.body = { msg: error }
@@ -45,6 +46,7 @@ const loginUser = async (ctx) => {
             return;
         } else {
             sendMsg(ctx, 400, 'invalid email or password');
+            return;
         }
     } catch (error) {
         console.log(error);
@@ -60,8 +62,10 @@ const changePassword = async (ctx) => {
         if (user && await Bcypt.compare(oldPassword, user.password)) {
             await User.updateOne({ email }, { $set: { password: await BcyptPassword(newPassword) } });
             sendMsg(ctx, 200, 'Password change successfully.');
+            return;
         }
         sendMsg(ctx, 400, 'Old password is not valid. Please enter valid old password');
+        return;
     } catch (error) {
         console.log(error);
     }
@@ -83,6 +87,7 @@ const forgotePassword = async (ctx) => {
     if (modifiedCount > 0) ctx.body = { msg: 'password change successfully' };
     else {
         sendMsg(ctx, 400, 'user is not exist');
+        return;
     }
     return;
 }
@@ -105,6 +110,7 @@ const getTeam = async (ctx) => {
 
 const updatedUser = async (ctx) => {
     const { id } = ctx.request.params;
+    const { upData } = ctx;
     await User.updateOne({ _id: ObjectId(id) }, { $set: upData });
     ctx.body = { msg: 'user updated successfully.' }
 }

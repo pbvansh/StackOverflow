@@ -6,7 +6,7 @@ const { makeDownVote, makeUpVote } = require('../utils/vote');
 const Qns = client.db('test').collection('qns')
 
 const askQns = async (ctx) => {
-    const { _id: user_id, org_id } = ctx.user._id;
+    const { _id: user_id, org_id } = ctx.user;
     const date = new Date();
     await Qns.insertOne({
         user_id,
@@ -21,6 +21,7 @@ const askQns = async (ctx) => {
 
     });
     sendMsg(ctx, 201, 'Question ask successfully');
+    return;
 }
 
 const getSingleQns = async (ctx) => {
@@ -136,40 +137,50 @@ const getQns = async (ctx) => {
             foreignField: 'question_id',
             as: 'answers'
         }
-    }, {
-        $unwind: {
-            path: "$answers",
-            preserveNullAndEmptyArrays: true
+    },
+    //  {
+    //     $unwind: {
+    //         path: "$answers",
+    //         preserveNullAndEmptyArrays: true
+    //     }
+    // }, 
+    {
+        $project: {
+            _id: 0,
+            title: 1,
+            name: "$userName.userName",
+            tags: "$tags",
+            upVotes: "$totalUpVote",
+            downVotes: "$totalDownVote",
+            date: "$date",
+            answers: { $size: "$answers" }
         }
     },
-    {
-        $sort: { "answers.totalUpVote": -1 }
-    },
-    {
-        $group: {
-            _id: "$_id",
-            title: { '$first': '$title' },
-            name: { '$first': '$userName.userName' },
-            tags: { "$first": "$tags" },
-            upVotes: { "$first": "$totalUpVote" },
-            downVotes: { "$first": "$totalDownVote" },
-            date: { "$first": "$date" },
-            totalAnswers: {
-                $sum: {
-                    "$cond": [
-                        { "$eq": [{ $type: "$answers" }, 'missing'] },
-                        0,
-                        1
-                    ]
-                }
-            }
-        }
-    },
+    // {
+    //     $group: {
+    //         _id: "$_id",
+    //         title: { '$first': '$title' },
+    //         name: { '$first': '$userName.userName' },
+    //         tags: { "$first": "$tags" },
+    //         upVotes: { "$first": "$totalUpVote" },
+    //         downVotes: { "$first": "$totalDownVote" },
+    //         date: { "$first": "$date" },
+    //         totalAnswers: {
+    //             $sum: {
+    //                 "$cond": [
+    //                     { "$eq": [{ $type: "$answers" }, 'missing'] },
+    //                     0,
+    //                     1
+    //                 ]
+    //             }
+    //         }
+    //     }
+    // },
     {
         $match: { ...filter, ...date } || {}
     },
     {
-        $sort: Object.keys(sort).length === 0 ? { upVotes: -1 } : sort
+        $sort: Object.keys(sort).length === 0 ? { _id: -1 } : sort
     }, {
         $skip: skip
     }, {
